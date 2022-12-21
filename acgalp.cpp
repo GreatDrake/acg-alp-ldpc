@@ -216,15 +216,33 @@ int AddRowsALP(const std::vector<TCodeword>& H, glp_prob* lp) {
     return added_rows;
 }
 
-bool DecodeALP(const std::vector<TCodeword>& H, TCodeword y, TCodeword& result) {
+double CalculateLogDensity(double mean, double std, double value) {
+    return -(value - mean) * (value - mean);
+}
+
+std::vector<double> CalculateCoef(const std::vector<double>& y, double snr) {
+    double llrVariance = 8 * 0.5 * pow(10, (snr / 10));
+    double llrMean = 4 * 0.5 * pow(10, (snr / 10));
+    double llrSigma = sqrt(llrVariance);
+
+    std::vector<double> coef(N);
+    for (int i = 0; i < N; ++i) {
+        coef[i] = CalculateLogDensity(llrMean, llrSigma, -y[i]) - CalculateLogDensity(llrMean, llrSigma, y[i]);
+    }
+
+    return coef;
+}
+
+bool DecodeALP(const std::vector<TCodeword>& H, const std::vector<double>& y, TCodeword& result, double snr) {
     glp_prob *lp = glp_create_prob();
 
     glp_set_obj_dir(lp, GLP_MIN);
 
+    auto coef = CalculateCoef(y, snr);
     glp_add_cols(lp, N);
     for (int i = 0; i < N; ++i) {
         glp_set_col_bnds(lp, i + 1, GLP_DB, 0.0, 1.0);
-        glp_set_obj_coef(lp, i + 1, y[i] ? -1.0 : 1.0);
+        glp_set_obj_coef(lp, i + 1, coef[i]);
     }
 
     glp_smcp parm;
@@ -324,15 +342,16 @@ std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword>& H0, const st
     return ShuffleColumns(H, p_inv);
 }
 
-bool DecodeAGCALP(const std::vector<TCodeword>& H, TCodeword y, TCodeword& result) {
+bool DecodeAGCALP(const std::vector<TCodeword>& H, const std::vector<double>& y, TCodeword& result, double snr) {
     glp_prob *lp = glp_create_prob();
 
     glp_set_obj_dir(lp, GLP_MIN);
 
+    auto coef = CalculateCoef(y, snr);
     glp_add_cols(lp, N);
     for (int i = 0; i < N; ++i) {
         glp_set_col_bnds(lp, i + 1, GLP_DB, 0.0, 1.0);
-        glp_set_obj_coef(lp, i + 1, y[i] ? -1.0 : 1.0);
+        glp_set_obj_coef(lp, i + 1, coef[i]);
     }
 
     glp_smcp parm;
@@ -340,25 +359,6 @@ bool DecodeAGCALP(const std::vector<TCodeword>& H, TCodeword y, TCodeword& resul
     parm.meth = GLP_DUALP;
     glp_simplex(lp, &parm);
 
-    /*std::vector<std::vector<TCodeword>> mats;
-    mats.emplace_back(H);
-    while (mats.size() < 2) {
-        bool found = false;
-        for (const auto& mat : mats) {
-            if (AddRowsALP(mat, lp) != 0) {
-                found = true;
-                break;
-            }
-        }
-        //std::cerr << found << "\n";
-        if (!found) {
-            auto H_cur = CalculateGauss(H, GetSolution(lp));
-            if (AddRowsALP(H_cur, lp) == 0) {
-                break;
-            }
-            mats.emplace_back(H_cur);
-        }
-    }*/
     while (AddRowsALP(H, lp) != 0 || AddRowsALP(CalculateGauss(H, GetSolution(lp)), lp) != 0) {
         glp_simplex(lp, &parm);
     }
@@ -379,25 +379,21 @@ bool DecodeAGCALP(const std::vector<TCodeword>& H, TCodeword y, TCodeword& resul
 
     glp_delete_prob(lp);
 
-    return IsCodeword(H, result);
-
-    /*if (answer) {
+    if (answer) {
         assert(IsCodeword(H, result));
     }
-
-    return answer;*/
+    return answer;
 }
 
 template <typename Gen>
-TCodeword Transmit(double std, const TCodeword& c, Gen& rnd) {
-    std::normal_distribution<double> dst(0.0, std);
-    TCodeword res;
+std::vector<double> Transmit(double snr, const TCodeword& c, Gen& rnd) {
+    double llrVariance = 8 * 0.5 * pow(10, (snr / 10));
+    double llrMean = 4 * 0.5 * pow(10, (snr / 10));
+    double llrSigma = sqrt(llrVariance);
+    std::vector<double> res(N);
+    std::normal_distribution<double> dst(llrMean, llrSigma);
     for (int i = 0; i < N; ++i) {
-        double x = c[i] ? 1.0 : -1.0;
-        x += dst(rnd);
-        if (x > 0) {
-            res[i] = true;
-        }
+        res[i] = (c[i] ? 1.0 : -1.0) * dst(rnd);
     }
     return res;
 }
@@ -413,26 +409,28 @@ struct ExperimentResult {
         std::cout << wrong << "/" << total << " wrong, ";
         std::cout << pseudo << "/" << total << " pseudocodewords" << std::endl;
         std::cout << "Success percent " << ((double)correct / total) * 100 << "%" << std::endl;
+        std::cout << "FER: " << ((double)(wrong + pseudo) / total) << std::endl;
     }
 };
 
 template <typename Func>
 ExperimentResult MakeExperiment(
     Func decoding_func,
-    double std,
+    double snr,
     int seed,
     const std::vector<TCodeword>& H,
     const std::vector<TCodeword>& tests,
-    int n_iter = -1
+    int n_iter = -1,
+    bool full_verbose = true
 ) {
     ExperimentResult result{0, 0, 0, 0};
     std::mt19937 rnd(seed);
     for (const auto& c : tests) {
         ++result.total;
-        auto y = Transmit(std, c, rnd);
+        auto y = Transmit(snr, c, rnd);
         TCodeword res;
         int cd = 0;
-        if (decoding_func(H, y, res)) {
+        if (decoding_func(H, y, res, snr)) {
             if (res == c) {
                 cd = 1;
                 ++result.correct;
@@ -442,7 +440,11 @@ ExperimentResult MakeExperiment(
         } else {
             ++result.pseudo;
         }
-        std::cout << result.total << ": " << cd << ", hamming: " << (c ^ y).count() << std::endl;
+        if (full_verbose) {
+            std::cout << result.total << ": " << cd << ", hamming: " << "???" << std::endl;
+        } else if (result.total % 250 == 0) {
+            std::cout << result.total << ": " << cd << ", hamming: " << "???" << std::endl;
+        }
         if (result.pseudo + result.wrong == n_iter) {
             break;
         }
@@ -471,59 +473,11 @@ int main() {
         assert(IsCodeword(H, vec));
     }
 
-    auto result = MakeExperiment(DecodeAGCALP, 0.6, 239, H, tests, 50);
-    result.Print();
-    std::cerr << TIME << "\n";
-
-    /*std::mt19937 rnd(239);
-    std::ofstream fout("codewords.txt");
-    for (int i = 0; i < 10000; ++i) {
-        auto c = GenerateRandomCodeword(G, rnd);
-        fout << c << "\n";
+    for (double snr : {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}) {
+        auto result = MakeExperiment(DecodeAGCALP, snr, 239, H, tests, 100, false);
+        std::cout << "SNR=" << snr << std::endl;
+        result.Print();
     }
-    return 0;*/
-
-    /*for (int it = 0; it < 100; ++it) {
-        assert(IsCodeword(H, GenerateRandomCodeword(G, rnd)));
-    }*/
-
-    /*std::vector<int> vals{1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
-                          1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0,
-                          0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0,
-                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    TCodeword some;
-    for (int i = 0; i < N; i++) {
-        some[i] = (bool)vals[i];
-    }
-    std::cout << IsCodeword(H, some) << "\n";
-    auto modif = some;
-    modif[N - 10] = 1 - modif[N - 10];
-    modif[N - 20] = 1 - modif[N - 20];
-    modif[N - 30] = 1 - modif[N - 30];
-    modif[N - 40] = 1 - modif[N - 40];
-    modif[N - 50] = 1 - modif[N - 50];
-    modif[N - 1] = 1 - modif[N - 1];
-    modif[N - 2] = 1 - modif[N - 2];
-    modif[N - 3] = 1 - modif[N - 3];
-    modif[N - 4] = 1 - modif[N - 4];
-    modif[N - 5] = 1 - modif[N - 5];
-    modif[N - 6] = 1 - modif[N - 6];
-    modif[N - 7] = 1 - modif[N - 7];
-    modif[N - 8] = 1 - modif[N - 8];
-    modif[N - 9] = 1 - modif[N - 9];
-    modif[N - 10] = 1 - modif[N - 10];
-    std::cout << modif << "\n";
-    std::cout << IsCodeword(H, modif) << "!\n";
-
-    TCodeword res;
-    std::cout << DecodeAGCALP(H, modif, res) << "\n";
-    std::cout << modif << "\n";
-    std::cout << res << "\n";
-    std::cout << some << "\n";
-    std::cout << IsCodeword(H, res) << "??\n";
-    assert(res == some);*/
 
     return 0;
 }
