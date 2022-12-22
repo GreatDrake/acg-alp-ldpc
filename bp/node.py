@@ -72,7 +72,7 @@ class CNode(Node):
         def phi(x):
             return -np.log(np.tanh(x.astype(np.float128))/2)
         q = np.array([msg for uid, msg in self.received_messages.items() if uid != requester_uid])
-        print(f'\tSending from {self.name} to {requester_uid}: {np.prod(np.sign(q))} * phi(sum(p{np.absolute(q)})) =', np.prod(np.sign(q))*phi(np.sum(phi(np.absolute(q)))), ':', phi(np.absolute(q)))
+        # print(f'\tSending from {self.name} to {requester_uid}: {np.prod(np.sign(q))} * phi(sum(p{np.absolute(q)})) =', np.prod(np.sign(q))*phi(np.sum(phi(np.absolute(q)))), ':', phi(np.absolute(q)))
         return np.prod(np.sign(q))*phi(np.sum(phi(np.absolute(q))))
 
 
@@ -94,9 +94,9 @@ class VNode(Node):
         self.received_messages = {node_uid: 0 for node_uid in self.neighbors}
 
     def message(self, requester_uid: int) -> np.float_:
-        print(f'\tSending from {self.name} to {requester_uid}: {self.channel_llr} + sum({[msg for uid, msg in self.received_messages.items() if uid != requester_uid]}) =', self.channel_llr + np.sum(
-            [msg for uid, msg in self.received_messages.items() if uid != requester_uid]
-        ))
+        # print(f'\tSending from {self.name} to {requester_uid}: {self.channel_llr} + sum({[msg for uid, msg in self.received_messages.items() if uid != requester_uid]}) =', self.channel_llr + np.sum(
+        #     [msg for uid, msg in self.received_messages.items() if uid != requester_uid]
+        # ))
         return self.channel_llr + np.sum(
             [msg for uid, msg in self.received_messages.items() if uid != requester_uid]
         )

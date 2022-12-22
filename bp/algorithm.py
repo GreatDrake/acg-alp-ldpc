@@ -31,8 +31,8 @@ class BeliefPropagation:
             # Check stop condition
             llr = np.array([node.estimate() for node in self.graph.ordered_v_nodes()])
             estimate = np.array([1 if node_llr < 0 else 0 for node_llr in llr])
-            print([node_llr for node_llr in llr])
-            print('  estimate:', ''.join([str(f) for f in estimate]))
+            # print([node_llr for node_llr in llr])
+            # print('  estimate:', ''.join([str(f) for f in estimate]))
             syndrome = self.h.dot(estimate) % 2
             if not syndrome.any():
                 break
