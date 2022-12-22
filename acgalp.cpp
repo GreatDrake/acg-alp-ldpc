@@ -8,31 +8,39 @@ constexpr double EPS = 1e-6;
 using TCodeword = std::bitset<N>;
 #define TIME (clock() * 1.0 / CLOCKS_PER_SEC)
 
-std::istream& operator>>(std::istream& in, TCodeword& res) {
+std::istream &operator>>(std::istream &in, TCodeword &res) {
     std::string s;
     in >> s;
     for (int i = 0; i < N; ++i) {
-        res[i] = (bool)(s[i] - '0');
+        res[i] = (bool) (s[i] - '0');
     }
     return in;
 }
 
-std::ostream& operator<<(std::ostream& out, const TCodeword& c) {
+std::ostream &operator<<(std::ostream &out, const TCodeword &c) {
     for (int i = 0; i < N; i++) {
         out << c[i];
     }
     return out;
 }
 
-template <typename T>
-std::ostream& operator<<(std::ostream& out, const std::vector<T>& vc) {
-    for (const auto& t : vc) {
+template<typename T>
+std::ostream &operator<<(std::ostream &out, const std::vector<T> &vc) {
+    for (const auto &t: vc) {
         out << t << "\n";
     }
     return out;
 }
 
-std::vector<TCodeword> ReadCodewords(const std::string& filename) {
+double GetllrSigma(double snr) {
+    return sqrt(8 * 0.5 * pow(10, (snr / 10)));
+}
+
+double GetllrMean(double snr) {
+    return 4 * 0.5 * pow(10, (snr / 10));
+}
+
+std::vector<TCodeword> ReadCodewords(const std::string &filename) {
     std::ifstream fin(filename);
     int cnt;
     fin >> cnt;
@@ -43,7 +51,7 @@ std::vector<TCodeword> ReadCodewords(const std::string& filename) {
     return res;
 }
 
-std::vector<TCodeword> ReadParityCheckMatrix(const std::string& filename) {
+std::vector<TCodeword> ReadParityCheckMatrix(const std::string &filename) {
     std::ifstream fin(filename);
     int n, m;
     fin >> n >> m;
@@ -74,8 +82,8 @@ std::vector<TCodeword> ReadParityCheckMatrix(const std::string& filename) {
     return result;
 }
 
-bool IsCodeword(const std::vector<TCodeword>& H, const TCodeword& c) {
-    for (const auto& vec : H) {
+bool IsCodeword(const std::vector<TCodeword> &H, const TCodeword &c) {
+    for (const auto &vec: H) {
         if ((vec & c).count() % 2 == 1) {
             return false;
         }
@@ -86,7 +94,7 @@ bool IsCodeword(const std::vector<TCodeword>& H, const TCodeword& c) {
 std::vector<TCodeword> GetOrtogonal(std::vector<TCodeword> H) {
     std::vector<int> pos(H.size());
     TCodeword is_main;
-    for (int i = 0; i < (int)H.size(); ++i) {
+    for (int i = 0; i < (int) H.size(); ++i) {
         pos[i] = -1;
         for (int j = 0; j < N; ++j) {
             if (H[i][j]) {
@@ -95,19 +103,19 @@ std::vector<TCodeword> GetOrtogonal(std::vector<TCodeword> H) {
             }
         }
         assert(pos[i] != -1);
-        for (int k = 0; k < (int)H.size(); ++k) {
+        for (int k = 0; k < (int) H.size(); ++k) {
             if (k != i && H[k][pos[i]]) {
                 H[k] ^= H[i];
             }
         }
         is_main[pos[i]] = true;
     }
-    std::vector<TCodeword> res(N - (int)H.size());
+    std::vector<TCodeword> res(N - (int) H.size());
     int idx = 0;
     for (int j = 0; j < N; ++j) {
         if (!is_main[j]) {
             res[idx][j] = true;
-            for (int i = 0; i < (int)H.size(); ++i) {
+            for (int i = 0; i < (int) H.size(); ++i) {
                 if (H[i][j]) {
                     res[idx][pos[i]] = true;
                 }
@@ -118,10 +126,10 @@ std::vector<TCodeword> GetOrtogonal(std::vector<TCodeword> H) {
     return res;
 }
 
-template <typename Gen>
-TCodeword GenerateRandomCodeword(const std::vector<TCodeword>& G, Gen& rnd) {
+template<typename Gen>
+TCodeword GenerateRandomCodeword(const std::vector<TCodeword> &G, Gen &rnd) {
     TCodeword res;
-    for (const auto& vec : G) {
+    for (const auto &vec: G) {
         if (rnd() % 2 == 0) {
             res ^= vec;
         }
@@ -130,7 +138,7 @@ TCodeword GenerateRandomCodeword(const std::vector<TCodeword>& G, Gen& rnd) {
 }
 
 
-std::vector<double> GetSolution(glp_prob* lp) {
+std::vector<double> GetSolution(glp_prob *lp) {
     std::vector<double> res(N);
     for (int i = 0; i < N; ++i) {
         res[i] = glp_get_col_prim(lp, i + 1);
@@ -138,10 +146,10 @@ std::vector<double> GetSolution(glp_prob* lp) {
     return res;
 }
 
-int AddRowsALP(const std::vector<TCodeword>& H, glp_prob* lp) {
+int AddRowsALP(const std::vector<TCodeword> &H, glp_prob *lp) {
     auto u = GetSolution(lp);
     int added_rows = 0;
-    for (int i = 0; i < (int)H.size(); ++i) {
+    for (int i = 0; i < (int) H.size(); ++i) {
         int n_size = 0;
         int v_size = 0;
         int j_best = 0;
@@ -210,7 +218,7 @@ int AddRowsALP(const std::vector<TCodeword>& H, glp_prob* lp) {
                 }
             }
 
-            glp_set_mat_row(lp, glp_get_num_rows(lp), n_size, idx.data(),coef.data());
+            glp_set_mat_row(lp, glp_get_num_rows(lp), n_size, idx.data(), coef.data());
         }
     }
     return added_rows;
@@ -220,10 +228,9 @@ double CalculateLogDensity(double mean, double std, double value) {
     return -(value - mean) * (value - mean);
 }
 
-std::vector<double> CalculateCoef(const std::vector<double>& y, double snr) {
-    double llrVariance = 8 * 0.5 * pow(10, (snr / 10));
-    double llrMean = 4 * 0.5 * pow(10, (snr / 10));
-    double llrSigma = sqrt(llrVariance);
+std::vector<double> CalculateCoef(const std::vector<double> &y, double snr) {
+    double llrMean = GetllrMean(snr);
+    double llrSigma = GetllrSigma(snr);
 
     std::vector<double> coef(N);
     for (int i = 0; i < N; ++i) {
@@ -233,7 +240,7 @@ std::vector<double> CalculateCoef(const std::vector<double>& y, double snr) {
     return coef;
 }
 
-bool DecodeALP(const std::vector<TCodeword>& H, const std::vector<double>& y, TCodeword& result, double snr) {
+bool DecodeALP(const std::vector<TCodeword> &H, const std::vector<double> &y, TCodeword &result, double snr) {
     glp_prob *lp = glp_create_prob();
 
     glp_set_obj_dir(lp, GLP_MIN);
@@ -277,9 +284,9 @@ bool DecodeALP(const std::vector<TCodeword>& H, const std::vector<double>& y, TC
     return answer;
 }
 
-std::vector<TCodeword> ShuffleColumns(const std::vector<TCodeword>& H, const std::vector<int>& p) {
+std::vector<TCodeword> ShuffleColumns(const std::vector<TCodeword> &H, const std::vector<int> &p) {
     std::vector<TCodeword> res(H.size(), 0);
-    for (int i = 0; i < (int)H.size(); ++i) {
+    for (int i = 0; i < (int) H.size(); ++i) {
         for (int j = 0; j < N; ++j) {
             res[i][j] = H[i][p[j]];
         }
@@ -287,7 +294,7 @@ std::vector<TCodeword> ShuffleColumns(const std::vector<TCodeword>& H, const std
     return res;
 }
 
-std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword>& H0, const std::vector<double>& u) {
+std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword> &H0, const std::vector<double> &u) {
     std::vector<int> non_int, zeros, ones;
     for (int i = 0; i < N; ++i) {
         if (u[i] < EPS) {
@@ -302,10 +309,10 @@ std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword>& H0, const st
         return abs(u[i] - 0.5) < abs(u[j] - 0.5);
     });
     std::vector<int> p = non_int;
-    for (int i : zeros) {
+    for (int i: zeros) {
         p.emplace_back(i);
     }
-    for (int i : ones) {
+    for (int i: ones) {
         p.emplace_back(i);
     }
     std::vector<int> p_inv(N);
@@ -315,10 +322,10 @@ std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword>& H0, const st
     int col = 0;
     auto H = ShuffleColumns(H0, p);
     std::vector<int> pos(H.size());
-    for (int i = 0; i < (int)H.size(); ++i) {
+    for (int i = 0; i < (int) H.size(); ++i) {
         while (col < N) {
             bool found = false;
-            for (int t = i; t < (int)H.size(); ++t) {
+            for (int t = i; t < (int) H.size(); ++t) {
                 if (H[t][col]) {
                     std::swap(H[i], H[t]);
                     found = true;
@@ -333,7 +340,7 @@ std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword>& H0, const st
         assert(col < N);
         pos[i] = col;
         ++col;
-        for (int k = 0; k < (int)H.size(); ++k) {
+        for (int k = 0; k < (int) H.size(); ++k) {
             if (k != i && H[k][pos[i]]) {
                 H[k] ^= H[i];
             }
@@ -342,7 +349,7 @@ std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword>& H0, const st
     return ShuffleColumns(H, p_inv);
 }
 
-bool DecodeAGCALP(const std::vector<TCodeword>& H, const std::vector<double>& y, TCodeword& result, double snr) {
+bool DecodeAGCALP(const std::vector<TCodeword> &H, const std::vector<double> &y, TCodeword &result, double snr) {
     glp_prob *lp = glp_create_prob();
 
     glp_set_obj_dir(lp, GLP_MIN);
@@ -385,11 +392,10 @@ bool DecodeAGCALP(const std::vector<TCodeword>& H, const std::vector<double>& y,
     return answer;
 }
 
-template <typename Gen>
-std::vector<double> Transmit(double snr, const TCodeword& c, Gen& rnd) {
-    double llrVariance = 8 * 0.5 * pow(10, (snr / 10));
-    double llrMean = 4 * 0.5 * pow(10, (snr / 10));
-    double llrSigma = sqrt(llrVariance);
+template<typename Gen>
+std::vector<double> Transmit(double snr, const TCodeword &c, Gen &rnd) {
+    double llrMean = GetllrMean(snr);
+    double llrSigma = GetllrSigma(snr);
     std::vector<double> res(N);
     std::normal_distribution<double> dst(llrMean, llrSigma);
     for (int i = 0; i < N; ++i) {
@@ -408,47 +414,69 @@ struct ExperimentResult {
         std::cout << correct << "/" << total << " correct, ";
         std::cout << wrong << "/" << total << " wrong, ";
         std::cout << pseudo << "/" << total << " pseudocodewords" << std::endl;
-        std::cout << "Success percent " << ((double)correct / total) * 100 << "%" << std::endl;
-        std::cout << "FER: " << ((double)(wrong + pseudo) / total) << std::endl;
+        std::cout << "Success percent " << ((double) correct / total) * 100 << "%" << std::endl;
+        std::cout << "FER: " << ((double) (wrong + pseudo) / total) << std::endl;
     }
 };
 
-template <typename Func>
+template<typename Func>
 ExperimentResult MakeExperiment(
     Func decoding_func,
     double snr,
     int seed,
-    const std::vector<TCodeword>& H,
-    const std::vector<TCodeword>& tests,
+    const std::vector<TCodeword> &H,
+    const std::vector<TCodeword> &tests,
     int n_iter = -1,
     bool full_verbose = true
 ) {
     ExperimentResult result{0, 0, 0, 0};
     std::mt19937 rnd(seed);
-    for (const auto& c : tests) {
+    int sum_hamming = 0;
+    int sum_hamming_ok = 0;
+    int sum_hamming_wrong = 0;
+    for (const auto &c: tests) {
         ++result.total;
         auto y = Transmit(snr, c, rnd);
+        int hamming = 0;
+        for (int i = 0; i < N; ++i) {
+            if (c[i] && y[i] <= 0) {
+                hamming++;
+            }
+            if (!c[i] && y[i] > 0) {
+                hamming++;
+            }
+        }
+        sum_hamming += hamming;
         TCodeword res;
         int cd = 0;
         if (decoding_func(H, y, res, snr)) {
             if (res == c) {
                 cd = 1;
                 ++result.correct;
+                sum_hamming_ok += hamming;
             } else {
                 ++result.wrong;
+                sum_hamming_wrong += hamming;
             }
         } else {
             ++result.pseudo;
+            sum_hamming_wrong += hamming;
         }
         if (full_verbose) {
-            std::cout << result.total << ": " << cd << ", hamming: " << "???" << std::endl;
-        } else if (result.total % 250 == 0) {
-            std::cout << result.total << ": " << cd << ", hamming: " << "???" << std::endl;
+            std::cout << result.total << ": " << cd << ", hamming: " << hamming << std::endl;
+        } else if (result.total % 1000 == 0) {
+            std::cout << result.total << ": " << cd << ", hamming: " << hamming << std::endl;
         }
         if (result.pseudo + result.wrong == n_iter) {
             break;
         }
     }
+    std::cout << "Average hamming distance after transmittion: " << (double) sum_hamming / result.total << std::endl;
+    std::cout << "Average hamming distance of correctly decoded codes: "
+              << (result.correct == 0 ? -1 : (double) sum_hamming_ok / result.correct) << std::endl;
+    std::cout << "Average hamming distance of incorrectly decoded codes: "
+              << (result.total == result.correct ? -1 : (double) sum_hamming_wrong / (result.total - result.correct))
+              << std::endl;
     return result;
 }
 
@@ -456,27 +484,33 @@ int main() {
 #ifdef ONPC
     freopen("input", "r", stdin);
 #endif
-    std::ios::sync_with_stdio(0); std::cin.tie(0); std::cout.tie(0);
+    std::ios::sync_with_stdio(0);
+    std::cin.tie(0);
+    std::cout.tie(0);
 
     glp_term_out(GLP_MSG_OFF);
 
     auto H = ReadParityCheckMatrix("H.txt");
     auto G = GetOrtogonal(H);
-    for (const auto& vec : G) {
+    for (const auto &vec: G) {
         assert(IsCodeword(H, vec));
     }
 
     auto tests = ReadCodewords("codewords.txt");
     std::cerr << "There are " << tests.size() << " codewords" << std::endl;
 
-    for (const auto& vec : tests) {
+    for (const auto &vec: tests) {
         assert(IsCodeword(H, vec));
     }
 
-    for (double snr : {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}) {
-        auto result = MakeExperiment(DecodeAGCALP, snr, 239, H, tests, 100, false);
-        std::cout << "SNR=" << snr << std::endl;
-        result.Print();
+    for (const std::string &name: {"AGC-ALP", "ALP"}) {
+        std::cout << "Decoding method: " << name << std::endl;
+        for (double snr: {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}) {
+            std::cout << "SNR=" << snr << std::endl;
+            auto result = MakeExperiment(name == "ALP" ? DecodeALP : DecodeAGCALP, snr, 239, H, tests, 100, false);
+            result.Print();
+        }
+        std::cout << "______________________________________________________________________________" << std::endl;
     }
 
     return 0;
