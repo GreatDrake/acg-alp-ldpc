@@ -392,6 +392,144 @@ bool DecodeAGCALP(const std::vector<TCodeword> &H, const std::vector<double> &y,
     return answer;
 }
 
+void AddThreeVariableInnequalities(glp_prob *lp, int i, int j, int h) {
+    glp_add_rows(lp, 4);
+    glp_set_row_bnds(lp, glp_get_num_rows(lp) - 3, GLP_UP, 0, 0);
+    glp_set_row_bnds(lp, glp_get_num_rows(lp) - 2, GLP_UP, 0, 0);
+    glp_set_row_bnds(lp, glp_get_num_rows(lp) - 1, GLP_UP, 0, 0);
+    glp_set_row_bnds(lp, glp_get_num_rows(lp), GLP_UP, 0, 2.0);
+    std::vector<int> row_idx(4, 0);
+    row_idx[1] = i;
+    row_idx[2] = j;
+    row_idx[3] = h;
+    std::vector<double> row_coef(4, 0.0);
+    {
+        row_coef[1] = 1.0;
+        row_coef[2] = -1.0;
+        row_coef[3] = -1.0;
+        glp_set_mat_row(lp, glp_get_num_rows(lp) - 3, 3, row_idx.data(), row_coef.data());
+    }
+    {
+        row_coef[1] = -1.0;
+        row_coef[2] = 1.0;
+        row_coef[3] = -1.0;
+        glp_set_mat_row(lp, glp_get_num_rows(lp) - 2, 3, row_idx.data(), row_coef.data());
+    }
+    {
+        row_coef[1] = -1.0;
+        row_coef[2] = -1.0;
+        row_coef[3] = 1.0;
+        glp_set_mat_row(lp, glp_get_num_rows(lp) - 1, 3, row_idx.data(), row_coef.data());
+    }
+    {
+        row_coef[1] = 1.0;
+        row_coef[2] = 1.0;
+        row_coef[3] = 1.0;
+        glp_set_mat_row(lp, glp_get_num_rows(lp), 3, row_idx.data(), row_coef.data());
+    }
+}
+
+bool DecodeFullLP(const std::vector<TCodeword> &H, const std::vector<double> &y, TCodeword &result, double snr) {
+    glp_prob *lp = glp_create_prob();
+
+    glp_set_obj_dir(lp, GLP_MIN);
+
+    int n_aux = 0;
+    for (int i = 0; i < (int) H.size(); ++i) {
+        n_aux += std::max((int) H[i].count() - 3, 0);
+    }
+
+    auto coef = CalculateCoef(y, snr);
+    glp_add_cols(lp, N + n_aux);
+    for (int i = 0; i < N; ++i) {
+        glp_set_col_bnds(lp, i + 1, GLP_DB, 0.0, 1.0);
+        glp_set_obj_coef(lp, i + 1, coef[i]);
+    }
+    for (int i = 0; i < n_aux; ++i) {
+        glp_set_col_bnds(lp, N + i + 1, GLP_DB, 0.0, 1.0);
+        glp_set_obj_coef(lp, N + i + 1, 0.0);
+    }
+
+    int pos = N;
+    for (int i = 0; i < (int) H.size(); ++i) {
+        std::vector<int> idx;
+        for (int j = 0; j < N; ++j) {
+            if (H[i][j]) {
+                idx.emplace_back(j);
+            }
+        }
+        if (idx.empty()) {
+            continue;
+        }
+        if (idx.size() == 1) {
+            glp_add_rows(lp, 1);
+            glp_set_row_bnds(lp, glp_get_num_rows(lp), GLP_UP, 0, 0);
+            {
+                std::vector<int> row_idx(2, 0);
+                std::vector<double> row_coef(2, 0.0);
+                row_idx[1] = idx[0] + 1;
+                row_coef[1] = 1.0;
+                glp_set_mat_row(lp, glp_get_num_rows(lp), 1, row_idx.data(), row_coef.data());
+            }
+            continue;
+        }
+        if (idx.size() == 2) {
+            glp_add_rows(lp, 2);
+            glp_set_row_bnds(lp, glp_get_num_rows(lp) - 1, GLP_UP, 0, 0);
+            glp_set_row_bnds(lp, glp_get_num_rows(lp), GLP_UP, 0, 0);
+            std::vector<int> row_idx(3, 0);
+            row_idx[1] = idx[0] + 1;
+            row_idx[2] = idx[1] + 1;
+            {
+                std::vector<double> row_coef(3, 0.0);
+                row_coef[1] = 1.0;
+                row_coef[2] = -1.0;
+                glp_set_mat_row(lp, glp_get_num_rows(lp) - 1, 2, row_idx.data(), row_coef.data());
+            }
+            {
+                std::vector<double> row_coef(3, 0.0);
+                row_coef[1] = -1.0;
+                row_coef[2] = 1.0;
+                glp_set_mat_row(lp, glp_get_num_rows(lp), 2, row_idx.data(), row_coef.data());
+            }
+            continue;
+        }
+        int idx_last = idx[0] + 1;
+        for (int j = 1; j < (int) idx.size() - 2; ++j) {
+            int idx_mid = idx[j] + 1;
+            int idx_aux = ++pos;
+            AddThreeVariableInnequalities(lp, idx_last, idx_mid, idx_aux);
+            idx_last = idx_aux;
+        }
+        AddThreeVariableInnequalities(lp, idx_last, idx[(int) idx.size() - 2] + 1, idx.back() + 1);
+    }
+
+    glp_smcp parm;
+    glp_init_smcp(&parm);
+    parm.meth = GLP_DUALP;
+    glp_simplex(lp, &parm);
+
+    bool answer = true;
+    result = 0;
+    for (int i = 0; i < N; ++i) {
+        auto val = glp_get_col_prim(lp, i + 1);
+        if (val <= 0.5) {
+            result[i] = false;
+        } else {
+            result[i] = true;
+        }
+        if (val >= EPS && val <= 1.0 - EPS) {
+            answer = false;
+        }
+    }
+    glp_delete_prob(lp);
+
+    if (answer) {
+        assert(IsCodeword(H, result));
+    }
+    return answer;
+}
+
 template<typename Gen>
 std::vector<double> Transmit(double snr, const TCodeword &c, Gen &rnd) {
     double llrMean = GetllrMean(snr);
@@ -421,13 +559,13 @@ struct ExperimentResult {
 
 template<typename Func>
 ExperimentResult MakeExperiment(
-    Func decoding_func,
-    double snr,
-    int seed,
-    const std::vector<TCodeword> &H,
-    const std::vector<TCodeword> &tests,
-    int n_iter = -1,
-    bool full_verbose = true
+        Func decoding_func,
+        double snr,
+        int seed,
+        const std::vector<TCodeword> &H,
+        const std::vector<TCodeword> &tests,
+        int n_iter = -1,
+        bool full_verbose = true
 ) {
     ExperimentResult result{0, 0, 0, 0};
     std::mt19937 rnd(seed);
@@ -481,12 +619,7 @@ ExperimentResult MakeExperiment(
 }
 
 int main() {
-#ifdef ONPC
-    freopen("input", "r", stdin);
-#endif
     std::ios::sync_with_stdio(0);
-    std::cin.tie(0);
-    std::cout.tie(0);
 
     glp_term_out(GLP_MSG_OFF);
 
@@ -503,11 +636,12 @@ int main() {
         assert(IsCodeword(H, vec));
     }
 
-    for (const std::string &name: {"AGC-ALP", "ALP"}) {
+    for (const std::string &name: {"AGC-ALP", "ALP", "Full-LP"}) {
         std::cout << "Decoding method: " << name << std::endl;
         for (double snr: {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}) {
             std::cout << "SNR=" << snr << std::endl;
-            auto result = MakeExperiment(name == "ALP" ? DecodeALP : DecodeAGCALP, snr, 239, H, tests, 100, false);
+            auto result = MakeExperiment(name == "ALP" ? DecodeALP : (name == "Full-LP" ? DecodeFullLP : DecodeAGCALP),
+                                         snr, 239, H, tests, 100, false);
             result.Print();
         }
         std::cout << "______________________________________________________________________________" << std::endl;
