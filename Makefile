@@ -1,11 +1,16 @@
-compile_bp:
-	g++ -std=c++17 -O3 bp.cpp -pthread -o bp
+bin:
+	@mkdir -p bin
 
-run_bp: compile_bp
-	./bp
+CMD = g++ -std=c++17 -pthread -lglpk -O3 -I.
 
-compile_acgalp:
-	g++ -std=c++17 -O3 acgalp.cpp -lglpk -L . -o acgalp
+main.o: bin
+	${CMD} -c main.cpp -o bin/main.o
 
-run_acgalp: compile_acgalp
-	./acgalp
+main: main.o
+	${CMD} -o bin/main bin/main.o
+
+clean:
+	rm -rf bin/
+
+run: main
+	./bin/main
