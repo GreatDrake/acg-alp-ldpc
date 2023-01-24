@@ -18,8 +18,9 @@
 using namespace std;
 
 const int THREADS_NUM = 26;
-const int LOG_FREQ = 2000;
+const int LOG_FREQ = 1000000;
 const int TESTS_NUM = 1000;
+
 const vector<double> SNRS = {-5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5};
 const vector <shared_ptr<Decoder>> decoders{
         make_shared<BeliefPropagationDecoder>(100),
@@ -27,7 +28,7 @@ const vector <shared_ptr<Decoder>> decoders{
 #ifdef USE_GLPK
         make_shared<FullLPDecoder>(),
         make_shared<ALPDecoder>(),
-        make_shared<AGCALPDecoder>(2000),
+        make_shared<AGCALPDecoder>(1000),
 #endif
 };
 
@@ -149,7 +150,9 @@ int main() {
     cout.precision(5);
     cout << fixed;
 
-//    glp_term_out(GLP_MSG_OFF);
+    for (auto snr : SNRS) {
+        cerr << "snr=" << snr << ": var=" << llr_variance(snr) << endl;
+    }
 
     TMatrix H = read_pcm("data/H05.txt");
 //    vector<TCodeword> codewords = read_codewords("data/codewords.txt");
