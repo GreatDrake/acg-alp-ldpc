@@ -55,9 +55,9 @@ struct HammingDistanceTracker {
     void new_experiment(const TMatrix &H, const TCodeword &c, const TFVector &y, bool correct) {
         int hamming = 0;
         for (int i = 0; i < (int) H[0].size(); ++i) {
-            if (c[i] && y[i] <= 0)
+            if (!c[i] && y[i] <= 0)
                 hamming++;
-            if (!c[i] && y[i] > 0)
+            if (c[i] && y[i] > 0)
                 hamming++;
         }
         sum_hamming += hamming;
@@ -158,6 +158,8 @@ int main() {
     mt19937 rnd(239);
     vector <TCodeword> codewords = gen_random_codewords(G, TESTS_NUM, rnd);
 
+    cerr << "n=" << H[0].size() << " k=" << H.size() << "\n";
+
     for (auto decoder: decoders) {
         cout << "Algo: " << decoder->name() << endl;
         for (double snr: SNRS) {
@@ -175,10 +177,12 @@ int main() {
 
             int total = codewords.size();
             cout << "\tSNR: " << snr << ", FER: " << res.FER() << ", (time=" << res.avg_time() << "s)" << endl;
+            cerr << "\tSNR: " << snr << ", FER: " << res.FER() << ", (time=" << res.avg_time() << "s)" << endl;
             cerr << "\t\tAverage hamming distance: " << res.mean_hamming() << std::endl;
             cerr << "\t\tAverage hamming distance, correctly decoded: " << res.mean_hamming_ok() << endl;
             cerr << "\t\tAverage hamming distance, incorrectly decoded: " << res.mean_hamming_wrong() << endl;
         }
+        cerr << string(30, '_') << endl;
     }
 
     return 0;
