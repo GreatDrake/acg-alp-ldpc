@@ -61,7 +61,7 @@ class VNode : public Node {
 public:
     explicit VNode(double snr, double channel_symbol) {
         _uuid = counter++;
-        _channel_llr = log_density(-channel_symbol, snr) - log_density(channel_symbol, snr);
+        _channel_llr = llr(channel_symbol, snr);
     }
 
     void init() {

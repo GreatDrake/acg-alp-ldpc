@@ -13,7 +13,7 @@ public:
 std::vector<double> CalculateCoef(const std::vector<double> &y, double snr) {
     std::vector<double> coef(y.size());
     for (int i = 0; i < (int) y.size(); ++i) {
-        coef[i] = log_density(-y[i], snr) - log_density(y[i], snr);
+        coef[i] = llr(y[i], snr);
     }
 
     return coef;
