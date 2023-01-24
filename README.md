@@ -4,6 +4,8 @@ Implementation of [Adaptive Cut Generation Algorithm](https://ieeexplore.ieee.or
 
 Comparison with Belief Propagation.
 
+Also some other Linear Programming decoders are implemented and [QP-ADMM Algorithm](https://arxiv.org/pdf/1910.12712.pdf).
+
 ### Run
 
 All experiments (need ```glpk``` installed):
