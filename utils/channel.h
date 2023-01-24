@@ -35,7 +35,6 @@ TFVector transmit(double snr, const TCodeword &c, Gen &rnd) {
 
 template<typename Gen>
 TCodeword gen_random_codeword(const std::vector<TCodeword> &G, Gen &rnd) {
-    return G[0];  // TODO(rediska)
     assert(!G.empty());
     TCodeword res(G[0].size(), false);
     for (int i = 0; i < (int) G.size(); i++)
