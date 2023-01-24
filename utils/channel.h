@@ -5,16 +5,16 @@
 
 using namespace std;
 
-#define TIME (clock() * 1.0 / CLOCKS_PER_SEC)
+typedef vector<double> TFVector;
 
 const double EPS = 1e-6;
 const double R = 0.5;
 
-typedef vector<double> TFVector;
+//double llr_mean(double snr) { return 4.0 * R * pow(10, (snr / 10)); }
+//double llr_variance(double snr) { return 8.0 * R * pow(10, (snr / 10)); }
 
-double llr_mean(double snr) { return 4.0 * R * pow(10, (snr / 10)); }
-
-double llr_variance(double snr) { return 8.0 * R * pow(10, (snr / 10)); }
+double llr_mean(double snr) { return 1; }
+double llr_variance(double snr) { return pow(10, -(snr / 10)) / 2; }
 
 double log_density(double v, double snr) {
     double mean = llr_mean(snr);

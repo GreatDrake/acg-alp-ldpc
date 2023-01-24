@@ -6,22 +6,22 @@
 #include "algo/algo.h"
 #include "algo/bp.h"
 #include "algo/qp_admm.h"
-#include "algo/full_lp.h"
-#include "algo/alp.h"
-#include "algo/agc_alp.h"
+//#include "algo/full_lp.h"
+//#include "algo/alp.h"
+//#include "algo/agc_alp.h"
 
 using namespace std;
 
 const int THREADS_NUM = 26;
 const int LOG_FREQ = 2000;
 const int TESTS_NUM = 1000;
-const vector<double> SNRS = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+const vector<double> SNRS = {-5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5};
 const vector <shared_ptr<Decoder>> decoders{
         make_shared<BeliefPropagationDecoder>(100),
         make_shared<QPADMMDecoder>(0.6, 1.0, 1000, 1e-5),
-        make_shared<FullLPDecoder>(),
-        make_shared<ALPDecoder>(),
-        make_shared<AGCALPDecoder>(2000),
+//        make_shared<FullLPDecoder>(),
+//        make_shared<ALPDecoder>(),
+//        make_shared<AGCALPDecoder>(2000),
 };
 
 struct ThreadArgs {
@@ -142,7 +142,7 @@ int main() {
     cout.precision(5);
     cout << fixed;
 
-    glp_term_out(GLP_MSG_OFF);
+//    glp_term_out(GLP_MSG_OFF);
 
     TMatrix H = read_pcm("data/H05.txt");
 //    vector<TCodeword> codewords = read_codewords("data/codewords.txt");
