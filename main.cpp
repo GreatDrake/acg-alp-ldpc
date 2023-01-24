@@ -1,3 +1,5 @@
+//#define USE_GLPK
+
 #include <utility>
 #include <memory>
 #include <chrono>
@@ -6,9 +8,12 @@
 #include "algo/algo.h"
 #include "algo/bp.h"
 #include "algo/qp_admm.h"
-//#include "algo/full_lp.h"
-//#include "algo/alp.h"
-//#include "algo/agc_alp.h"
+
+#ifdef USE_GLPK
+#include "algo/full_lp.h"
+#include "algo/alp.h"
+#include "algo/agc_alp.h"
+#endif
 
 using namespace std;
 
@@ -19,9 +24,11 @@ const vector<double> SNRS = {-5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5};
 const vector <shared_ptr<Decoder>> decoders{
         make_shared<BeliefPropagationDecoder>(100),
         make_shared<QPADMMDecoder>(0.6, 1.0, 1000, 1e-5),
-//        make_shared<FullLPDecoder>(),
-//        make_shared<ALPDecoder>(),
-//        make_shared<AGCALPDecoder>(2000),
+#ifdef USE_GLPK
+        make_shared<FullLPDecoder>(),
+        make_shared<ALPDecoder>(),
+        make_shared<AGCALPDecoder>(2000),
+#endif
 };
 
 struct ThreadArgs {
