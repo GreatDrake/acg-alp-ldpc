@@ -6,8 +6,8 @@
 #include "glpk.h"
 
 
-std::vector<TCodeword> ShuffleColumns(const std::vector<TCodeword> &H, const std::vector<int> &p) {
-    std::vector<TCodeword> res(H.size(), TCodeword(p.size(), false));
+std::vector <TCodeword> ShuffleColumns(const std::vector <TCodeword> &H, const std::vector<int> &p) {
+    std::vector <TCodeword> res(H.size(), TCodeword(p.size(), false));
     for (int i = 0; i < (int) H.size(); ++i) {
         for (int j = 0; j < (int) p.size(); ++j) {
             res[i][j] = H[i][p[j]];
@@ -16,7 +16,7 @@ std::vector<TCodeword> ShuffleColumns(const std::vector<TCodeword> &H, const std
     return res;
 }
 
-std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword> &H0, const std::vector<double> &u) {
+std::vector <TCodeword> CalculateGauss(const std::vector <TCodeword> &H0, const std::vector<double> &u) {
     std::vector<int> non_int, zeros, ones;
     for (int i = 0; i < (int) u.size(); ++i) {
         if (u[i] < EPS) {
@@ -75,11 +75,11 @@ std::vector<TCodeword> CalculateGauss(const std::vector<TCodeword> &H0, const st
 
 class AGCALPDecoder : public Decoder {
 public:
-    explicit AGCALPDecoder(int max_rows) : _max_rows(max_rows) {
-        glp_term_out(GLP_MSG_OFF);
-    }
+    explicit AGCALPDecoder(int max_rows) : _max_rows(max_rows) {}
 
     pair<TCodeword, bool> decode(const TMatrix &H, const TFVector &y, double snr) override {
+        glp_term_out(GLP_MSG_OFF);
+
         glp_prob *lp = glp_create_prob();
 
         glp_set_obj_dir(lp, GLP_MIN);

@@ -59,6 +59,8 @@ pair<TCodeword, bool> DecodeFromLp(glp_prob *lp, const TFVector &y) {
 }
 
 pair<TCodeword, bool> DecodeFullLP(const std::vector<TCodeword> &H, const std::vector<double> &y, double snr) {
+    glp_term_out(GLP_MSG_OFF);
+
     glp_prob *lp = glp_create_prob();
 
     glp_set_obj_dir(lp, GLP_MIN);
@@ -153,17 +155,15 @@ pair<TCodeword, bool> DecodeFullLP(const std::vector<TCodeword> &H, const std::v
     return res;
 }
 
-class MLDecoder : public Decoder {
+class FullLPDecoder : public Decoder {
 public:
-    explicit MLDecoder() {
-        glp_term_out(GLP_MSG_OFF);
-    };
+    FullLPDecoder() {}
 
     pair<TCodeword, bool> decode(const TMatrix &H, const TFVector &channel_word, double snr) override {
         return DecodeFullLP(H, channel_word, snr);
     }
 
-    string name() const override { return "ML"; }
+    string name() const override { return "FullLP"; }
 };
 
 #endif //ACG_ALP_LDPC_FULL_LP_H

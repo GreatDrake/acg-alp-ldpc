@@ -18,7 +18,7 @@ std::vector<double> GetSolution(glp_prob *lp, int N) {
     return res;
 }
 
-int AddRowsALP(const std::vector<TCodeword> &H, glp_prob *lp) {
+int AddRowsALP(const std::vector <TCodeword> &H, glp_prob *lp) {
     auto u = GetSolution(lp, H[0].size());
     int added_rows = 0;
     for (int i = 0; i < (int) H.size(); ++i) {
@@ -98,11 +98,11 @@ int AddRowsALP(const std::vector<TCodeword> &H, glp_prob *lp) {
 
 class ALPDecoder : public Decoder {
 public:
-    explicit ALPDecoder() {
-        glp_term_out(GLP_MSG_OFF);
-    };
+    ALPDecoder() {}
 
     pair<TCodeword, bool> decode(const TMatrix &H, const TFVector &y, double snr) override {
+        glp_term_out(GLP_MSG_OFF);
+
         glp_prob *lp = glp_create_prob();
 
         glp_set_obj_dir(lp, GLP_MIN);

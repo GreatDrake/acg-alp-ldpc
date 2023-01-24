@@ -5,9 +5,9 @@
 #include "algo/algo.h"
 #include "algo/bp.h"
 #include "algo/qp_admm.h"
-//#include "algo/full_lp.h"
-//#include "algo/alp.h"
-//#include "algo/agc_alp.h"
+#include "algo/full_lp.h"
+#include "algo/alp.h"
+#include "algo/agc_alp.h"
 
 using namespace std;
 
@@ -18,9 +18,9 @@ const vector<double> SNRS = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
 const vector <shared_ptr<Decoder>> decoders{
         make_shared<BeliefPropagationDecoder>(100),
         make_shared<QPADMMDecoder>(0.6, 1.0, 1000, 1e-5),
-//        make_shared<MLDecoder>(),
-//        make_shared<ALPDecoder>(),
-//        make_shared<AGCALPDecoder>(2000),
+        make_shared<FullLPDecoder>(),
+        make_shared<ALPDecoder>(),
+        make_shared<AGCALPDecoder>(2000),
 };
 
 struct ThreadArgs {
@@ -111,9 +111,10 @@ void *exp(void *arg) {
         mt19937 rnd(args.last_uuid);
 
         TFVector transmitted = transmit(args.snr, codeword, rnd);
-        time -= TIME;
+        auto start_time = chrono::steady_clock::now();
         pair<TCodeword, bool> p = args.decoder->decode(args.H, transmitted, args.snr);
-        time += TIME;
+        auto duration = chrono::steady_clock::now() - start_time;
+        time += (double)duration.count() / 1e9;
         if (uuid % LOG_FREQ == 0) {
             assert(!pthread_mutex_lock(&args.log_mutex));
             cout << uuid << endl;
@@ -138,6 +139,9 @@ void *exp(void *arg) {
 int main() {
     std::ios::sync_with_stdio(0);
     cout.precision(5);
+    cout << fixed;
+
+    glp_term_out(GLP_MSG_OFF);
 
     TMatrix H = read_pcm("data/H05.txt");
 //    vector<TCodeword> codewords = read_codewords("data/codewords.txt");
