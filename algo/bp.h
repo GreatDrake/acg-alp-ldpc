@@ -4,6 +4,9 @@
 #include <utility>
 
 #include "algo/algo.h"
+#include "utils/codeword.h"
+
+typedef pair <double, double> Message;
 
 class Node {
 public:
@@ -13,9 +16,9 @@ public:
 
     void register_neighbor(int neighbor_uuid) { _neighbors.push_back(neighbor_uuid); }
 
-    void receive_message(int n, double message) { _received_messages[n] = message; }
+    void receive_message(int n, Message message) { _received_messages[n] = message; }
 
-    virtual double message(const Node &n) = 0;
+    virtual Message message(const Node &n) = 0;
 
     int uuid() const { return _uuid; }
 
@@ -23,7 +26,7 @@ public:
 
     vector<int> _neighbors;
     int _uuid;
-    unordered_map<int, double> _received_messages;
+    unordered_map<int, Message> _received_messages;
 };
 
 int Node::counter = 0;
@@ -32,73 +35,76 @@ double phi(double x) { return -log(tanh(x / 2)); }
 
 class CNode : public Node {
 public:
-    explicit CNode() {
+    CNode(string name) : _name(name) {
         _uuid = counter++;
     }
 
     void init() {
         for (int n: _neighbors)
-            _received_messages[n] = 0;
+            _received_messages[n] = {0.0, 1.0};
     }
 
-    double message(const Node &n) override {
+    string name() const { return _name; }
+
+    Message message(const Node &n) override {
         double sum = 0, sgn = 1;
-        for (pair<int, double> p: _received_messages)
+        for (pair<int, Message> p: _received_messages)
             if (p.first != n.uuid()) {
-                sum += phi(abs(p.second));
-                if (p.second < -EPS)
-                    sgn *= -1;
-                if (abs(p.second) <= EPS)
-                    sgn = 0;
+                sum += p.second.first;
+                sgn *= p.second.second;
             }
-        if (abs(sum) < EPS)
-            return 0;
-        return sgn * phi(sum);
+        return {sgn * phi(sum), 1};
     }
+
+private:
+    string _name;
 };
 
 class VNode : public Node {
 public:
-    explicit VNode(double snr, double channel_symbol) {
+    VNode(double snr, double channel_symbol, string name) :
+            _channel_llr(llr(channel_symbol, snr)), _name(name) {
         _uuid = counter++;
-        _channel_llr = llr(channel_symbol, snr);
     }
 
     void init() {
         for (int n: _neighbors)
-            _received_messages[n] = 0;
+            _received_messages[n] = {0.0, 1.0};
     }
 
-    double message(const Node &n) override {
+    string name() const { return _name; }
+
+    Message message(const Node &n) override {
         double sum = 0;
-        for (pair<int, double> p: _received_messages)
+        for (pair<int, Message> p: _received_messages)
             if (p.first != n.uuid())
-                sum += p.second;
-        return _channel_llr + sum;
+                sum += p.second.first;
+        return {phi(fabs(_channel_llr + sum)), (_channel_llr + sum <= 0) ? -1 : 1};
     }
 
     double estimate() const {
         double sum = 0;
-        for (pair<int, double> p: _received_messages)
-            sum += p.second;
+        for (pair<int, Message> p: _received_messages)
+            sum += p.second.first;
         return _channel_llr + sum;
     }
 
 private:
     double _channel_llr;
+    string _name;
 };
 
 class TannerGraph {
 public:
-    int add_v_node(double snr, double channel_value) {
-        VNode v(snr, channel_value);
+    int add_v_node(double snr, double channel_value, int i) {
+        VNode v(snr, channel_value, "V" + to_string(i));
         _uuid_to_v_nodes[v.uuid()] = (int) _v_nodes.size();
         _v_nodes.push_back(v);
         return v.uuid();
     }
 
-    int add_c_node() {
-        CNode c;
+    int add_c_node(int i) {
+        CNode c("C" + to_string(i));
         _uuid_to_c_nodes[c.uuid()] = (int) _c_nodes.size();
         _c_nodes.push_back(c);
         return c.uuid();
@@ -122,8 +128,8 @@ public:
     VNode &v_node_by_uuid(int uuid) { return v_node(_uuid_to_v_nodes[uuid]); }
 
 protected:
-    vector<VNode> _v_nodes;
-    vector<CNode> _c_nodes;
+    vector <VNode> _v_nodes;
+    vector <CNode> _c_nodes;
     unordered_map<int, int> _uuid_to_v_nodes, _uuid_to_c_nodes;
 };
 
@@ -132,9 +138,9 @@ TannerGraph from_biadjacency_matrix(TMatrix h, double snr, const TFVector &chann
     int m = (int) h.size(), n = (int) h[0].size();
     vector<int> v_uuids, c_uuids;
     for (int i = 0; i < n; i++)
-        v_uuids.push_back(g.add_v_node(snr, channel_word[i]));
+        v_uuids.push_back(g.add_v_node(snr, channel_word[i], i));
     for (int i = 0; i < m; i++)
-        c_uuids.push_back(g.add_c_node());
+        c_uuids.push_back(g.add_c_node(i));
     for (int i = 0; i < m; i++)
         for (int j = 0; j < n; j++)
             if (h[i][j])
@@ -156,6 +162,7 @@ public:
             CNode &c = _graph.c_node(i);
             for (int n: c.neighbors()) {
                 VNode &v = _graph.v_node_by_uuid(n);
+//                cout << "\t" << v.name() << " -> " << c.name() << " : " << v.message(c) << endl;
                 c.receive_message(n, v.message(c));
             }
         }
@@ -166,6 +173,7 @@ public:
             VNode &v = _graph.v_node(i);
             for (int n: v.neighbors()) {
                 CNode &c = _graph.c_node_by_uuid(n);
+//                cout << "\t" << c.name() << " -> " << v.name() << " : " << c.message(v) << endl;
                 auto msg = c.message(v);
                 v.receive_message(n, msg);
             }
@@ -174,21 +182,17 @@ public:
 
     pair<TCodeword, bool> decode() {
         c_receive_messages();
+//        cout << "----------------------------------------" << endl;
         for (int _ = 0; _ < _max_iter; _++) {
             v_receive_messages();
             c_receive_messages();
+//            cout << "----------------------------------------" << endl;
 
             TCodeword estimation;
             for (int i = 0; i < _graph.v_size(); i++)
                 estimation.push_back(_graph.v_node(i).estimate() <= 0);
 
-            bool fits = true;
-            for (double c: _h * estimation)
-                if (c) {
-                    fits = false;
-                    break;
-                }
-            if (fits)
+            if (IsCodeword(_h, estimation))
                 return {estimation, true};
         }
         return {TCodeword(), false};

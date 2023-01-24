@@ -5,9 +5,10 @@
 
 using namespace std;
 
+#define double long double
 typedef vector<double> TFVector;
 
-const double EPS = 1e-6;
+const double EPS = 1e-8;
 
 double llr_variance(double snr) { return pow(10, -(snr / 10)) / 2; }
 
@@ -26,7 +27,7 @@ TFVector transmit(double snr, const TCodeword &c, Gen &rnd) {
 }
 
 template<typename Gen>
-TCodeword gen_random_codeword(const std::vector<TCodeword> &G, Gen &rnd) {
+TCodeword gen_random_codeword(const std::vector <TCodeword> &G, Gen &rnd) {
     assert(!G.empty());
     TCodeword res(G[0].size(), false);
     for (int i = 0; i < (int) G.size(); i++)
@@ -36,8 +37,8 @@ TCodeword gen_random_codeword(const std::vector<TCodeword> &G, Gen &rnd) {
 }
 
 template<typename Gen>
-vector<TCodeword> gen_random_codewords(const TMatrix &G, int n, Gen &rnd) {
-    vector<TCodeword> tests;
+vector <TCodeword> gen_random_codewords(const TMatrix &G, int n, Gen &rnd) {
+    vector <TCodeword> tests;
     for (int i = 0; i < n; i++)
         tests.push_back(gen_random_codeword(G, rnd));
     return tests;

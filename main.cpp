@@ -19,8 +19,7 @@ using namespace std;
 
 const int THREADS_NUM = 26;
 const int LOG_FREQ = 1000000;
-const int TESTS_NUM = 1000;
-
+const int TESTS_NUM = 10000;
 const vector<double> SNRS = {-5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5};
 const vector <shared_ptr<Decoder>> decoders{
         make_shared<BeliefPropagationDecoder>(100),

@@ -130,8 +130,8 @@ pair<TCodeword, bool> DecodeQPADMM(const std::vector<TCodeword> &H, const std::v
                 B += cf * (yl[j] + mu * (z[j] - prob.b[j]));
             }
             v[i] = -B / (2 * A);
-            v[i] = std::max(v[i], 0.0);
-            v[i] = std::min(v[i], 1.0);
+            v[i] = std::max(v[i], (double)0.0);
+            v[i] = std::min(v[i], (double)1.0);
         }
 
         for (int i = 0; i < (int) r.size(); ++i) {
@@ -146,8 +146,8 @@ pair<TCodeword, bool> DecodeQPADMM(const std::vector<TCodeword> &H, const std::v
         // update z, yl
         double sum2 = 0;
         for (int i = 0; i < (int) z.size(); ++i) {
-            z[i] = std::max(0.0, r[i] - yl[i]);
-            yl[i] = std::max(0.0, yl[i] - r[i]);
+            z[i] = std::max((double)0.0, r[i] - yl[i]);
+            yl[i] = std::max((double)0.0, yl[i] - r[i]);
             sum2 += (z[i] - r[i]) * (z[i] - r[i]);
         }
 
