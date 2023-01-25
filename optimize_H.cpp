@@ -44,14 +44,6 @@ public:
                 _blocks.back().push_back(s != -block_size);
             }
         }
-        for (int i = 0; i < (int)H.size(); i++) {
-            if (to_tmatrix()[i] != H[i]) {
-                cout << i << endl;
-                cout << to_tmatrix()[i] << endl;
-                cout << H[i] << endl;
-                cout << endl;
-            }
-        }
         assert(to_tmatrix() == H);
     }
 
