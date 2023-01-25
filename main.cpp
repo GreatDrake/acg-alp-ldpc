@@ -21,7 +21,7 @@ using namespace std;
 
 const int THREADS_NUM = 8;
 const int LOG_FREQ = 1000000;
-const int TESTS_NUM = 10000;
+const int TESTS_NUM = 1000;
 
 const vector<double> SNRS = {-5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5};
 const vector <shared_ptr<Decoder>> decoders{
@@ -47,10 +47,11 @@ int main() {
         cerr << "snr=" << snr << ": var=" << llr_variance(snr) << endl;
     }
 
-    TMatrix H = read_pcm("data/H05.txt");
+    TMatrix H = read_pcm("data/optimalH.txt");
+    //    TMatrix G = read_pcm("data/G05.txt");
+    TMatrix G = GetOrtogonal(H);
 //    vector<TCodeword> codewords = read_codewords("data/codewords.txt");
 //    codewords.resize(TESTS_NUM);
-    TMatrix G = read_pcm("data/G05.txt");
     mt19937 rnd(239);
     vector <TCodeword> codewords = gen_random_codewords(G, TESTS_NUM, rnd);
 

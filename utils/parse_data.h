@@ -41,4 +41,16 @@ vector<TCodeword> read_codewords(const string &filename) {
     return codewords;
 }
 
+void save_matrix(const TMatrix &H, const string &filepath) {
+    ofstream fout(filepath);
+    for (auto v : H) {
+        for (int i = 0; i < (int)v.size(); i++) {
+            fout << v[i];
+            if (i != (int)v.size() - 1)
+                fout << ',';
+        }
+        fout << endl;
+    }
+}
+
 #endif //ACG_ALP_LDPC_PARSE_DATA_H
