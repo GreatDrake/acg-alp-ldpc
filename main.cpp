@@ -1,4 +1,4 @@
-//#define USE_GLPK
+#define USE_GLPK
 
 #include <utility>
 #include <memory>
@@ -17,13 +17,14 @@
 
 using namespace std;
 
-const int THREADS_NUM = 26;
+const int THREADS_NUM = 8;
 const int LOG_FREQ = 1000000;
 const int TESTS_NUM = 10000;
+
 const vector<double> SNRS = {-5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5};
 const vector <shared_ptr<Decoder>> decoders{
         make_shared<BeliefPropagationDecoder>(100),
-        make_shared<QPADMMDecoder>(0.6, 1.0, 1000, 1e-5),
+        make_shared<QPADMMDecoder>(1.95, 0.5, 5000, 1e-5),
 #ifdef USE_GLPK
         make_shared<FullLPDecoder>(),
         make_shared<ALPDecoder>(),
@@ -149,6 +150,10 @@ int main() {
     cout.precision(5);
     cout << fixed;
 
+    ofstream fdata("report.csv");
+    fdata << "Method,SNR,Sigma,FER,Time,AvgHamming,AvgHammingCorrect,AvgHammingWrong" << endl;
+    fdata << fixed << setprecision(12);
+
     for (auto snr : SNRS) {
         cerr << "snr=" << snr << ": var=" << llr_variance(snr) << endl;
     }
@@ -183,6 +188,15 @@ int main() {
             cerr << "\t\tAverage hamming distance: " << res.mean_hamming() << std::endl;
             cerr << "\t\tAverage hamming distance, correctly decoded: " << res.mean_hamming_ok() << endl;
             cerr << "\t\tAverage hamming distance, incorrectly decoded: " << res.mean_hamming_wrong() << endl;
+
+            fdata << decoder->name() << ",";
+            fdata << snr << ",";
+            fdata << sqrt(llr_variance(snr)) << ",";
+            fdata << res.FER() << ",";
+            fdata << res.avg_time() << ",";
+            fdata << res.mean_hamming() << ",";
+            fdata << res.mean_hamming_ok() << ",";
+            fdata << res.mean_hamming_wrong() << endl;
         }
         cerr << string(30, '_') << endl;
     }
