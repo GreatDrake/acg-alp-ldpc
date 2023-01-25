@@ -43,7 +43,7 @@ std::ostream &operator<<(std::ostream &out, const std::vector<T> &vc) {
 }
 
 TCodeword operator^(const TCodeword &a, const TCodeword &b) {
-    assert(a.size() == b.size()), "Incorrect sizes in ^";
+    assert(a.size() == b.size()); // "Incorrect sizes in ^";
     TCodeword c(a.size());
     for (int i = 0; i < (int) a.size(); i++)
         c[i] = a[i] ^ b[i];
@@ -51,7 +51,7 @@ TCodeword operator^(const TCodeword &a, const TCodeword &b) {
 }
 
 TCodeword operator&(const TCodeword &a, const TCodeword &b) {
-    assert(a.size() == b.size()), "Incorrect sizes in &";
+    assert(a.size() == b.size()); // "Incorrect sizes in &";
     TCodeword c(a.size());
     for (int i = 0; i < (int) a.size(); i++)
         c[i] = a[i] & b[i];
@@ -59,7 +59,7 @@ TCodeword operator&(const TCodeword &a, const TCodeword &b) {
 }
 
 TMatrix operator*(const TMatrix &a, const TMatrix &b) {
-    assert(a[0].size() == b.size()), "Incorrect shapes for matmul";
+    assert(a[0].size() == b.size()); // "Incorrect shapes for matmul";
     TMatrix c(a.size());
     for (int i = 0; i < (int) a.size(); i++)
         c[i].resize((int)b[0].size(), false);

@@ -109,7 +109,9 @@ pair<TCodeword, bool> DecodeQPADMM(const std::vector<TCodeword> &H, const std::v
     for (double e: prob.e) {
         e_min = std::min(e_min, e);
     }
-    assert(e_min * mu > alpha);
+    if (e_min * mu <= alpha) {
+        return make_pair(TCodeword(H[0].size(), false), false);
+    }
 
     std::vector<double> v(prob.q.size(), 0.0);
     for (int i = 0; i < (int) prob.q.size(); ++i) {
