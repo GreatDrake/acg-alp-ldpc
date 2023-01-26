@@ -49,7 +49,7 @@ int main() {
 
     TMatrix H = read_pcm("data/optimalH.txt");
     //    TMatrix G = read_pcm("data/G05.txt");
-    TMatrix G = GetOrtogonal(H);
+    TMatrix G = GetOrtogonal(H).first;
 //    vector<TCodeword> codewords = read_codewords("data/codewords.txt");
 //    codewords.resize(TESTS_NUM);
     mt19937 rnd(239);

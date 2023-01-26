@@ -94,7 +94,7 @@ bool IsCodeword(const std::vector <TCodeword> &H, const TCodeword &c) {
     return true;
 }
 
-std::vector <TCodeword> GetOrtogonal(std::vector <TCodeword> H) {
+pair <TMatrix, bool> GetOrtogonal(TMatrix H) {
     std::vector<int> pos(H.size());
     TCodeword is_main((int) H[0].size());
     int n = H.size(), m = H[0].size();
@@ -105,13 +105,14 @@ std::vector <TCodeword> GetOrtogonal(std::vector <TCodeword> H) {
                 pos[i] = j;
                 break;
             }
-        assert(pos[i] != -1);
+        if (pos[i] == -1)
+            return {TMatrix(), false};
         for (int k = 0; k < n; ++k)
             if (k != i && H[k][pos[i]])
                 H[k] = (H[k] ^ H[i]);
         is_main[pos[i]] = true;
     }
-    std::vector <TCodeword> res(m - n);
+    TMatrix res(m - n);
     for (int i = 0; i < m - n; i++)
         res[i].resize((int) H[0].size());
     int idx = 0;
@@ -123,7 +124,7 @@ std::vector <TCodeword> GetOrtogonal(std::vector <TCodeword> H) {
                     res[idx][pos[i]] = true;
             ++idx;
         }
-    return res;
+    return {res, true};
 }
 
 #endif //ACG_ALP_LDPC_CODEWORD_H

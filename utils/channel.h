@@ -5,7 +5,6 @@
 
 using namespace std;
 
-#define double long double
 typedef vector<double> TFVector;
 
 const double EPS = 1e-8;

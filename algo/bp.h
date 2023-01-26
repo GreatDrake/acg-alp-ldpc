@@ -6,7 +6,7 @@
 #include "algo/algo.h"
 #include "utils/codeword.h"
 
-typedef pair <double, double> Message;
+typedef pair <long double, long double> Message;
 
 class Node {
 public:
@@ -31,7 +31,7 @@ public:
 
 int Node::counter = 0;
 
-double phi(double x) { return -log(tanh(x / 2)); }
+long double phi(long double x) { return -log(tanh(x / 2)); }
 
 class CNode : public Node {
 public:
@@ -47,7 +47,7 @@ public:
     string name() const { return _name; }
 
     Message message(const Node &n) override {
-        double sum = 0, sgn = 1;
+        long double sum = 0, sgn = 1;
         for (pair<int, Message> p: _received_messages)
             if (p.first != n.uuid()) {
                 sum += p.second.first;
@@ -62,7 +62,7 @@ private:
 
 class VNode : public Node {
 public:
-    VNode(double snr, double channel_symbol, string name) :
+    VNode(long double snr, long double channel_symbol, string name) :
             _channel_llr(llr(channel_symbol, snr)), _name(name) {
         _uuid = counter++;
     }
@@ -75,28 +75,28 @@ public:
     string name() const { return _name; }
 
     Message message(const Node &n) override {
-        double sum = 0;
+        long double sum = 0;
         for (pair<int, Message> p: _received_messages)
             if (p.first != n.uuid())
                 sum += p.second.first;
         return {phi(fabs(_channel_llr + sum)), (_channel_llr + sum <= 0) ? -1 : 1};
     }
 
-    double estimate() const {
-        double sum = 0;
+    long double estimate() const {
+        long double sum = 0;
         for (pair<int, Message> p: _received_messages)
             sum += p.second.first;
         return _channel_llr + sum;
     }
 
 private:
-    double _channel_llr;
+    long double _channel_llr;
     string _name;
 };
 
 class TannerGraph {
 public:
-    int add_v_node(double snr, double channel_value, int i) {
+    int add_v_node(long double snr, long double channel_value, int i) {
         VNode v(snr, channel_value, "V" + to_string(i));
         _uuid_to_v_nodes[v.uuid()] = (int) _v_nodes.size();
         _v_nodes.push_back(v);
@@ -133,7 +133,7 @@ protected:
     unordered_map<int, int> _uuid_to_v_nodes, _uuid_to_c_nodes;
 };
 
-TannerGraph from_biadjacency_matrix(TMatrix h, double snr, const TFVector &channel_word) {
+TannerGraph from_biadjacency_matrix(TMatrix h, long double snr, const TFVector &channel_word) {
     TannerGraph g;
     int m = (int) h.size(), n = (int) h[0].size();
     vector<int> v_uuids, c_uuids;
