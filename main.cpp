@@ -28,7 +28,7 @@ const vector <shared_ptr<Decoder>> decoders{
         make_shared<BeliefPropagationDecoder>(100),
         make_shared<QPADMMDecoder>(1.95, 0.5, 5000, 1e-5),
 #ifdef USE_GLPK
-        make_shared<FullLPDecoder>(),
+        //make_shared<FullLPDecoder>(),
         make_shared<ALPDecoder>(),
         make_shared<AGCALPDecoder>(1000),
 #endif

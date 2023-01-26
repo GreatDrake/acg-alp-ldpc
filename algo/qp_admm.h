@@ -120,18 +120,23 @@ pair<TCodeword, bool> DecodeQPADMM(const std::vector<TCodeword> &H, const std::v
     std::vector<double> z(prob.b.size(), 0.0);
     std::vector<double> yl(prob.b.size(), 0.0);
 
+    std::vector<double> inv_coef(prob.e.size(), 0.0);
+    for (int i = 0; i < (int) v.size(); ++i) {
+        double A = (mu * prob.e[i] - alpha) / 2;
+        inv_coef[i] = -1.0 / (2 * A);
+    }
+
     std::vector<double> r(prob.b.size());
     for (int iter = 0; iter < max_iter; ++iter) {
         // update v
         for (int i = 0; i < (int) v.size(); ++i) {
-            double A = (mu * prob.e[i] - alpha) / 2;
             double B = prob.q[i] + (alpha / 2);
             for (auto p: prob.A[i]) {
                 auto j = p.first;
                 auto cf = p.second;
                 B += cf * (yl[j] + mu * (z[j] - prob.b[j]));
             }
-            v[i] = -B / (2 * A);
+            v[i] = B * inv_coef[i];
             v[i] = std::max(v[i], (double)0.0);
             v[i] = std::min(v[i], (double)1.0);
         }
@@ -166,9 +171,6 @@ pair<TCodeword, bool> DecodeQPADMM(const std::vector<TCodeword> &H, const std::v
             result[i] = false;
         } else {
             result[i] = true;
-        }
-        if (val >= EPS && val <= 1.0 - EPS) {
-            answer = false;
         }
     }
 

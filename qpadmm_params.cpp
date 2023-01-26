@@ -11,7 +11,7 @@ using namespace std;
 
 const int THREADS_NUM = 8;
 const int LOG_FREQ = 1000000;
-const int TESTS_NUM = 500;
+const int TESTS_NUM = 1000;
 
 double estimate_qpadmm(const TMatrix& H, const vector<TCodeword>& codewords, double snr, double alpha, double mu) {
     auto decoder = make_shared<QPADMMDecoder>(alpha, mu, 1000, 1e-5);
@@ -38,8 +38,10 @@ int main() {
     cout.precision(5);
     cout << fixed;
 
-    TMatrix H = read_pcm("data/H05.txt");
-    TMatrix G = read_pcm("data/G05.txt");
+    //TMatrix H = read_pcm("data/H05.txt");
+    //TMatrix G = read_pcm("data/G05.txt");
+    TMatrix H = read_pcm("data/optimalH.txt");
+    TMatrix G = GetOrtogonal(H).first;
 
     mt19937 rnd(239);
     vector <TCodeword> codewords = gen_random_codewords(G, TESTS_NUM, rnd);
@@ -47,13 +49,13 @@ int main() {
     cerr << "n=" << H[0].size() << " k=" << H.size() << endl;
 
     double alpha_l = 0;
-    double alpha_r = 4.0;
-    int alpha_cnt = 81;
+    double alpha_r = 3.0;
+    int alpha_cnt = 61;
     double mu_l = 0;
-    double mu_r = 4.0;
-    int mu_cnt = 81;
+    double mu_r = 3.0;
+    int mu_cnt = 61;
 
-    double snr = -0.5;
+    double snr = -3.0;
 
     double best_fer = 2.0;
     double best_alpha = -1;
