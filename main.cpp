@@ -1,5 +1,5 @@
 #define USE_GLPK
-//#define OPTIMAL
+#define OPTIMAL
 
 #include <utility>
 #include <memory>
@@ -24,13 +24,13 @@ const int THREADS_NUM = 8;
 const int LOG_FREQ = 1000000;
 const int TESTS_NUM = 10000;
 
-const vector<double> SNRS = {-5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5};
+const vector<double> SNRS = {-5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, 0.0};
 const vector <shared_ptr<Decoder>> decoders{
         make_shared<BeliefPropagationDecoder>(100),
 #ifdef OPTIMAL
-        make_shared<QPADMMDecoder>(1.2, 0.55, 5000, 1e-5),
+        make_shared<QPADMMDecoder>(1.2, 0.55, 10000, 1e-5),
 #else
-        make_shared<QPADMMDecoder>(1.95, 0.5, 5000, 1e-5),
+        make_shared<QPADMMDecoder>(1.95, 0.5, 10000, 1e-5),
 #endif
 #ifdef USE_GLPK
         //make_shared<FullLPDecoder>(),
@@ -60,7 +60,7 @@ int main() {
     TMatrix G = read_pcm("data/G05.txt");
 #endif
 
-    mt19937 rnd(239);
+    mt19937 rnd(239'239'239);
     vector <TCodeword> codewords = gen_random_codewords(G, TESTS_NUM, rnd);
 
     cerr << "n=" << H[0].size() << " k=" << H.size() << "\n";
